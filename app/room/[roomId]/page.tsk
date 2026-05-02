@@ -5,7 +5,7 @@ import { createClient } from "@liveblocks/client";
 import { useSearchParams } from "next/navigation";
 
 const client = createClient({
-  publicApiKey: "pk_dev_kQcr_z7z2sjF7KabRM--jfuZTLRVWVsFeO1AQfYZh7Bl_XElSd_IxU6epPJj9NUr",
+  publicApiKey: process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY,
 });
 
 const cards = ["ELMO", "WOLF", "REVERSE", "REDRAW"];
