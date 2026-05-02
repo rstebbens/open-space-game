@@ -54,7 +54,7 @@ Designed for small group discussions
 Not built for large-scale events (yet)
 If the room is full, you’ll need to spin up another one.
 🚀 Try it out
-👉 Play the game (add your live link here)
+👉 Play the game (www.Robstebbens.com) 
 ## 🛠️ Tech Stack
 Next.js
 Liveblocks (realtime multiplayer)
