@@ -4,13 +4,13 @@ import React, { useState } from "react";
 import {
   RoomProvider,
   useMutation,
-  useOthers,
   useStorage,
   useUpdateMyPresence,
 } from "@liveblocks/react";
 import { useSearchParams } from "next/navigation";
 
 import { useRoomHost } from "@/lib/useroomhost";
+import { useRoomLimit } from "@/lib/useroomlimit";
 import { useCardCooldown } from "@/lib/usecardcooldown";
 import { useElmoTimer } from "@/lib/useelmotimer";
 import { shuffleTopics } from "@/lib/topics";
@@ -57,16 +57,16 @@ export default function RoomPage({ params }) {
         name,
         playerId: null,
       }}
-     initialStorage={{
-  currentTopic: "What dependencies are blocking us?",
-  selectedTopic: null,
-  topicDeck: shuffleTopics(),
-  round: 1,
-  plays: [],
-  hostId: null,
-  playerHands: {},
-  elmoTimerEndsAt: null,
-}}
+      initialStorage={{
+        currentTopic: "What dependencies are blocking us?",
+        selectedTopic: null,
+        topicDeck: shuffleTopics(),
+        round: 1,
+        plays: [],
+        hostId: null,
+        playerHands: {},
+        elmoTimerEndsAt: null,
+      }}
     >
       <Game roomId={roomId} name={name} />
     </RoomProvider>
@@ -74,9 +74,11 @@ export default function RoomPage({ params }) {
 }
 
 function Game({ roomId, name }) {
-  const others = useOthers();
+  const { others, playerCount, maxPlayers, isRoomFull } = useRoomLimit();
+
   const updateMyPresence = useUpdateMyPresence();
   const [roundPressed, setRoundPressed] = useState(false);
+
   const {
     playerId,
     hostId,
@@ -84,12 +86,8 @@ function Game({ roomId, name }) {
     storageReady: hostStorageReady,
   } = useRoomHost(roomId);
 
-  const {
-    isCoolingDown,
-    remainingMs,
-    progress,
-    tryCardAction,
-  } = useCardCooldown();
+  const { isCoolingDown, remainingMs, progress, tryCardAction } =
+    useCardCooldown();
 
   const {
     isElmoActive,
@@ -107,6 +105,7 @@ function Game({ roomId, name }) {
 
   const [topicPressed, setTopicPressed] = useState(false);
   const [isFlippingTopic, setIsFlippingTopic] = useState(false);
+
   const plays = useStorage((root) => root.plays) || [];
   const currentTopic =
     useStorage((root) => root.currentTopic) ||
@@ -129,9 +128,7 @@ function Game({ roomId, name }) {
     playerHands !== null &&
     playerHands !== undefined;
 
-  const myHand = storageReady
-    ? playerHands[playerId] || STARTING_HAND
-    : [];
+  const myHand = storageReady ? playerHands[playerId] || STARTING_HAND : [];
 
   const cardPlays = plays.filter((play) => play.cardType);
   const historyEvents = plays;
@@ -148,9 +145,9 @@ function Game({ roomId, name }) {
   }, []);
 
   React.useEffect(() => {
-    if (!storageReady || !playerId) return;
+    if (!storageReady || !playerId || isRoomFull) return;
     ensureHand(playerId);
-  }, [storageReady, ensureHand, playerId]);
+  }, [storageReady, ensureHand, playerId, isRoomFull]);
 
   const playCard = useMutation(
     ({ storage }, id, cardType, customTopic = "", playerName = "Anonymous") => {
@@ -167,64 +164,64 @@ function Game({ roomId, name }) {
   );
 
   const drawTopic = useMutation(({ storage }, id, playerName) => {
-  const deck = storage.get("topicDeck") || [];
-  const freshDeck = deck.length > 0 ? deck : shuffleTopics();
-  const nextTopic = freshDeck[0];
+    const deck = storage.get("topicDeck") || [];
+    const freshDeck = deck.length > 0 ? deck : shuffleTopics();
+    const nextTopic = freshDeck[0];
 
-  if (!nextTopic) return;
+    if (!nextTopic) return;
 
-  storage.set("selectedTopic", nextTopic);
-  storage.set("currentTopic", nextTopic.title);
-  storage.set("topicDeck", freshDeck.slice(1));
+    storage.set("selectedTopic", nextTopic);
+    storage.set("currentTopic", nextTopic.title);
+    storage.set("topicDeck", freshDeck.slice(1));
 
-  const existingPlays = storage.get("plays") || [];
+    const existingPlays = storage.get("plays") || [];
 
-  storage.set("plays", [
-    ...existingPlays,
-    {
-      id: `${Date.now()}-${Math.random()}-flip`,
-      type: "FLIP",
-      playerId: id,
-      player: playerName,
-      topic: nextTopic.title,
-      round: storage.get("round") || 1,
-      time: Date.now(),
-    },
-  ]);
-}, []);
+    storage.set("plays", [
+      ...existingPlays,
+      {
+        id: `${Date.now()}-${Math.random()}-flip`,
+        type: "FLIP",
+        playerId: id,
+        player: playerName,
+        topic: nextTopic.title,
+        round: storage.get("round") || 1,
+        time: Date.now(),
+      },
+    ]);
+  }, []);
 
   const newRound = useMutation(({ storage }) => {
-  const hands = storage.get("playerHands") || {};
-  const resetHands = {};
+    const hands = storage.get("playerHands") || {};
+    const resetHands = {};
 
-  Object.keys(hands).forEach((id) => {
-    resetHands[id] = STARTING_HAND;
-  });
+    Object.keys(hands).forEach((id) => {
+      resetHands[id] = STARTING_HAND;
+    });
 
-  storage.set("playerHands", resetHands);
-  storage.set("plays", []);
-  storage.set("selectedTopic", null);
-  storage.set("topicDeck", shuffleTopics());
-  storage.set("elmoTimerEndsAt", null);
+    storage.set("playerHands", resetHands);
+    storage.set("plays", []);
+    storage.set("selectedTopic", null);
+    storage.set("topicDeck", shuffleTopics());
+    storage.set("elmoTimerEndsAt", null);
 
-  const currentRound = storage.get("round") || 1;
-  storage.set("round", currentRound + 1);
-}, []);
+    const currentRound = storage.get("round") || 1;
+    storage.set("round", currentRound + 1);
+  }, []);
 
- function handleDrawTopic() {
-  if (!isHost || !playerId) return;
+  function handleDrawTopic() {
+    if (!isHost || !playerId || isRoomFull) return;
 
-  setIsFlippingTopic(true);
+    setIsFlippingTopic(true);
 
-  setTimeout(() => {
-    clearElmoTimer();
-    drawTopic(playerId, name);
-    setIsFlippingTopic(false);
-  }, 450);
-}
+    setTimeout(() => {
+      clearElmoTimer();
+      drawTopic(playerId, name);
+      setIsFlippingTopic(false);
+    }, 450);
+  }
 
   function handleHostFlip() {
-    if (!isHost) return;
+    if (!isHost || isRoomFull) return;
 
     setTopicPressed(true);
     setTimeout(() => setTopicPressed(false), 160);
@@ -233,7 +230,7 @@ function Game({ roomId, name }) {
   }
 
   function handleCardClick(cardType) {
-    if (!playerId) return;
+    if (!playerId || isRoomFull) return;
 
     if (cardType === "WOLF") {
       setWolfOpen(true);
@@ -248,7 +245,7 @@ function Game({ roomId, name }) {
   }
 
   function submitWolf() {
-    if (!playerId) return;
+    if (!playerId || isRoomFull) return;
 
     const topic = wolfTopic.trim();
 
@@ -268,7 +265,7 @@ function Game({ roomId, name }) {
     })),
   ]
     .filter((player) => player.id)
-    .slice(0, 12);
+    .slice(0, maxPlayers);
 
   if (!storageReady) {
     return (
@@ -278,12 +275,29 @@ function Game({ roomId, name }) {
     );
   }
 
+  if (isRoomFull) {
+    return (
+      <main style={styles.page}>
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <h1>Room full</h1>
+          <p>
+            This session already has {maxPlayers} people in it, including the
+            host.
+          </p>
+          <p>Please ask the host to create a new room.</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={styles.page}>
       <header style={styles.header}>
         <div>
           <strong>Open Space Card Game</strong>
-          <div style={styles.room}>Room: {roomId}</div>
+          <div style={styles.room}>
+            Room: {roomId} · Players: {playerCount}/{maxPlayers}
+          </div>
         </div>
 
         <div style={styles.topic}>
@@ -291,26 +305,26 @@ function Game({ roomId, name }) {
         </div>
 
         <button
-  onClick={() => {
-    if (!isHost) return;
+          onClick={() => {
+            if (!isHost || isRoomFull) return;
 
-    setRoundPressed(true);
-    setTimeout(() => setRoundPressed(false), 160);
+            setRoundPressed(true);
+            setTimeout(() => setRoundPressed(false), 160);
 
-    clearElmoTimer();
-    newRound();
-  }}
-  style={{
-    ...styles.newRoundButton,
-    opacity: isHost ? 1 : 0.4,
-    cursor: isHost ? "pointer" : "not-allowed",
-    transform: roundPressed
-      ? "scale(0.94) translateY(2px)"
-      : "scale(1)",
-    transition: "transform 0.12s ease",
-  }}
->
-         👑 New Round
+            clearElmoTimer();
+            newRound();
+          }}
+          style={{
+            ...styles.newRoundButton,
+            opacity: isHost ? 1 : 0.4,
+            cursor: isHost ? "pointer" : "not-allowed",
+            transform: roundPressed
+              ? "scale(0.94) translateY(2px)"
+              : "scale(1)",
+            transition: "transform 0.12s ease",
+          }}
+        >
+          👑 New Round
         </button>
       </header>
 
@@ -397,14 +411,10 @@ function Game({ roomId, name }) {
             <div style={styles.topicTableArea}>
               {selectedTopic && (
                 <div style={styles.selectedTopicArea}>
-                  <div style={styles.selectedTopicLabel}>
-                    Selected Topic
-                  </div>
+                  <div style={styles.selectedTopicLabel}>Selected Topic</div>
 
                   <div style={styles.selectedTopicCard}>
-                    <div style={styles.topicCardType}>
-                      {selectedTopic.type}
-                    </div>
+                    <div style={styles.topicCardType}>{selectedTopic.type}</div>
 
                     <div style={styles.topicCardTitle}>
                       {selectedTopic.title}
@@ -437,9 +447,7 @@ function Game({ roomId, name }) {
               >
                 <div style={styles.selectedTopicLabelBack}>Host</div>
 
-                <div style={styles.topicCardBack}>
-                  CLICK TO FLIP
-                </div>
+                <div style={styles.topicCardBack}>CLICK TO FLIP</div>
               </button>
             </div>
 
@@ -482,9 +490,7 @@ function Game({ roomId, name }) {
         </div>
 
         {myHand.length === 0 && (
-          <div style={styles.emptyHand}>
-            No cards left this round.
-          </div>
+          <div style={styles.emptyHand}>No cards left this round.</div>
         )}
       </section>
 
@@ -501,9 +507,7 @@ function Game({ roomId, name }) {
             />
 
             <div style={styles.modalActions}>
-              <button onClick={() => setWolfOpen(false)}>
-                Cancel
-              </button>
+              <button onClick={() => setWolfOpen(false)}>Cancel</button>
 
               <button
                 onClick={() => tryCardAction(submitWolf)}
