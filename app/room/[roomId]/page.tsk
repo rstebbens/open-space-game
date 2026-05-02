@@ -1,0 +1,90 @@
+"use client";
+
+import { RoomProvider, useMutation, useOthers, useStorage } from "@liveblocks/react";
+import { createClient } from "@liveblocks/client";
+import { useSearchParams } from "next/navigation";
+
+const client = createClient({
+  publicApiKey: "pk_dev_kQcr_z7z2sjF7KabRM--jfuZTLRVWVsFeO1AQfYZh7Bl_XElSd_IxU6epPJj9NUr",
+});
+
+const cards = ["ELMO", "WOLF", "REVERSE", "REDRAW"];
+
+export default function RoomPage({ params }: { params: { roomId: string } }) {
+  const searchParams = useSearchParams();
+  const name = searchParams.get("name") || "Anonymous";
+
+  return (
+    <RoomProvider
+      id={params.roomId}
+      client={client}
+      initialPresence={{ name }}
+      initialStorage={{
+        plays: [],
+      }}
+    >
+      <Game roomId={params.roomId} />
+    </RoomProvider>
+  );
+}
+
+function Game({ roomId }: { roomId: string }) {
+  const others = useOthers();
+  const plays = useStorage((root: any) => root.plays) || [];
+
+  const playCard = useMutation(({ storage, self }, card: string) => {
+    const plays = storage.get("plays");
+    plays.push({
+      player: self.presence.name,
+      card,
+      time: Date.now(),
+    });
+  }, []);
+
+  return (
+    <main style={{ padding: 40, fontFamily: "sans-serif" }}>
+      <h1>Room: {roomId}</h1>
+
+      <section style={{ marginBottom: 24 }}>
+        <h2>Players</h2>
+        <p>You are in the room.</p>
+        {others.map((user) => (
+          <p key={user.connectionId}>{user.presence?.name as string}</p>
+        ))}
+      </section>
+
+      <section
+        style={{
+          border: "2px solid #333",
+          borderRadius: 16,
+          padding: 24,
+          minHeight: 240,
+          marginBottom: 24,
+        }}
+      >
+        <h2>Table</h2>
+
+        {plays.length === 0 && <p>No cards played yet.</p>}
+
+        {plays.map((play: any, index: number) => (
+          <p key={index}>
+            {play.player} played {play.card}
+          </p>
+        ))}
+      </section>
+
+      <section>
+        <h2>Your hand</h2>
+        {cards.map((card) => (
+          <button
+            key={card}
+            onClick={() => playCard(card)}
+            style={{ padding: 12, marginRight: 8 }}
+          >
+            {card}
+          </button>
+        ))}
+      </section>
+    </main>
+  );
+}
