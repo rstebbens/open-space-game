@@ -104,7 +104,7 @@ function Game({ roomId, name }) {
 
   const [wolfOpen, setWolfOpen] = useState(false);
   const [wolfTopic, setWolfTopic] = useState("");
-
+  const [customTopicOpen, setCustomTopicOpen] = useState(false);
   const selectedTopic = useStorage((root) => root.selectedTopic);
   const topicDeck = useStorage((root) => root.topicDeck) || [];
 
@@ -140,12 +140,8 @@ function Game({ roomId, name }) {
 
   const setCustomTopics = useMutation(({ storage }, topics) => {
     storage.set("customTopics", topics);
-
-    const currentDeck = storage.get("topicDeck") || [];
-
-    if (!currentDeck.length) {
-      storage.set("topicDeck", shuffleTopics(topics));
-    }
+    storage.set("selectedTopic", null);
+    storage.set("topicDeck", shuffleTopics(topics));
   }, []);
 
   const cardPlays = plays.filter((play) => play.cardType);
@@ -247,6 +243,12 @@ function Game({ roomId, name }) {
     tryCardAction(handleDrawTopic);
   }
 
+  function closeCustomTopicModal() {
+    setCustomTopicOpen(false);
+    setCustomTopicInput("");
+    setCustomTopicError("");
+  }
+
   function submitCustomTopics() {
     if (!playerId || !isHost || isRoomFull) return;
 
@@ -259,14 +261,10 @@ function Game({ roomId, name }) {
       return;
     }
 
-    const nextTopics = dedupeTopics([...customTopics, ...parsedTopics]).slice(
-      0,
-      50
-    );
+    const nextTopics = dedupeTopics(parsedTopics).slice(0, 50);
 
     setCustomTopics(nextTopics);
-    setCustomTopicInput("");
-    setCustomTopicError("");
+    closeCustomTopicModal();
   }
 
   function handleCardClick(cardType) {
@@ -371,9 +369,18 @@ function Game({ roomId, name }) {
       <section style={styles.mainArea}>
         <aside style={styles.historyPanel}>
           {isHost && (
-            <div style={{ color: "gold", fontSize: 16, marginBottom: 10 }}>
-              You are host 👑
-            </div>
+            <>
+              <div style={{ color: "gold", fontSize: 16, marginBottom: 10 }}>
+                You are host 👑
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomTopicOpen(true)}
+                style={styles.customTopicButton}
+              >
+                Custom topics
+              </button>
+            </>
           )}
 
           <div style={styles.cooldownPanel}>
@@ -419,55 +426,6 @@ function Game({ roomId, name }) {
               </>
             ) : (
               <div style={styles.cooldownReady}>No active ELMO</div>
-            )}
-          </div>
-
-          <div style={styles.customTopicPanel}>
-            <div style={styles.customTopicHeader}>Custom topics</div>
-
-            {customTopics.length === 0 ? (
-              <div style={styles.customTopicText}>
-                No custom topics added yet.
-              </div>
-            ) : (
-              <div style={styles.customTopicList}>
-                {customTopics.map((topic, index) => (
-                  <div key={`${topic}-${index}`} style={styles.customTopicItem}>
-                    {topic}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {isHost && (
-              <>
-                <textarea
-                  value={customTopicInput}
-                  onChange={(event) => {
-                    setCustomTopicInput(event.target.value);
-                    setCustomTopicError("");
-                  }}
-                  placeholder="Paste one topic per line"
-                  style={styles.customTopicTextarea}
-                />
-
-                {customTopicError ? (
-                  <div style={styles.customTopicError}>{customTopicError}</div>
-                ) : (
-                  <div style={styles.customTopicHint}>
-                    Keep each topic under 140 characters. Maximum 50 custom
-                    topics.
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={submitCustomTopics}
-                  style={styles.customTopicButton}
-                >
-                  Add custom topics
-                </button>
-              </>
             )}
           </div>
 
@@ -582,6 +540,41 @@ function Game({ roomId, name }) {
           <div style={styles.emptyHand}>No cards left this round.</div>
         )}
       </section>
+
+      {customTopicOpen && (
+        <div style={styles.modalBackdrop}>
+          <div style={styles.modal}>
+            <h2>Add custom topics</h2>
+
+            <textarea
+              value={customTopicInput}
+              onChange={(e) => {
+                setCustomTopicInput(e.target.value);
+                setCustomTopicError("");
+              }}
+              placeholder="Paste one topic per line"
+              style={styles.textarea}
+            />
+
+            <div style={styles.customTopicHint}>
+              Each topic should be under 140 characters. Maximum 50 topics.
+            </div>
+
+            {customTopicError ? (
+              <div style={styles.customTopicError}>{customTopicError}</div>
+            ) : null}
+
+            <div style={styles.modalActions}>
+              <button type="button" onClick={closeCustomTopicModal}>
+                Cancel
+              </button>
+              <button type="button" onClick={submitCustomTopics}>
+                Add custom topics
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {wolfOpen && (
         <div style={styles.modalBackdrop}>
