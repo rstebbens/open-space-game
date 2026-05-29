@@ -13,7 +13,11 @@ import { useRoomHost } from "@/lib/useroomhost";
 import { useRoomLimit } from "@/lib/useroomlimit";
 import { useCardCooldown } from "@/lib/usecardcooldown";
 import { useElmoTimer } from "@/lib/useelmotimer";
-import { shuffleTopics } from "@/lib/topics";
+import {
+  shuffleTopics,
+  parsePastedTopics,
+  dedupeTopics,
+} from "@/lib/topics";
 import { playCardInStorage } from "@/lib/playcard";
 
 import Card from "@/components/card";
@@ -61,6 +65,7 @@ export default function RoomPage({ params }) {
         currentTopic: "What dependencies are blocking us?",
         selectedTopic: null,
         topicDeck: shuffleTopics(),
+        customTopics: [],
         round: 1,
         plays: [],
         hostId: null,
@@ -107,11 +112,14 @@ function Game({ roomId, name }) {
   const [isFlippingTopic, setIsFlippingTopic] = useState(false);
 
   const plays = useStorage((root) => root.plays) || [];
+  const customTopics = useStorage((root) => root.customTopics) || [];
   const currentTopic =
     useStorage((root) => root.currentTopic) ||
     "What dependencies are blocking us?";
   const round = useStorage((root) => root.round) || 1;
   const playerHands = useStorage((root) => root.playerHands);
+  const [customTopicInput, setCustomTopicInput] = useState("");
+  const [customTopicError, setCustomTopicError] = useState("");
 
   React.useEffect(() => {
     if (!playerId) return;
@@ -129,6 +137,16 @@ function Game({ roomId, name }) {
     playerHands !== undefined;
 
   const myHand = storageReady ? playerHands[playerId] || STARTING_HAND : [];
+
+  const setCustomTopics = useMutation(({ storage }, topics) => {
+    storage.set("customTopics", topics);
+
+    const currentDeck = storage.get("topicDeck") || [];
+
+    if (!currentDeck.length) {
+      storage.set("topicDeck", shuffleTopics(topics));
+    }
+  }, []);
 
   const cardPlays = plays.filter((play) => play.cardType);
   const historyEvents = plays;
@@ -165,7 +183,7 @@ function Game({ roomId, name }) {
 
   const drawTopic = useMutation(({ storage }, id, playerName) => {
     const deck = storage.get("topicDeck") || [];
-    const freshDeck = deck.length > 0 ? deck : shuffleTopics();
+    const freshDeck = deck.length > 0 ? deck : shuffleTopics(storage.get("customTopics") || []);
     const nextTopic = freshDeck[0];
 
     if (!nextTopic) return;
@@ -201,7 +219,7 @@ function Game({ roomId, name }) {
     storage.set("playerHands", resetHands);
     storage.set("plays", []);
     storage.set("selectedTopic", null);
-    storage.set("topicDeck", shuffleTopics());
+    storage.set("topicDeck", shuffleTopics(storage.get("customTopics") || []));
     storage.set("elmoTimerEndsAt", null);
 
     const currentRound = storage.get("round") || 1;
@@ -227,6 +245,28 @@ function Game({ roomId, name }) {
     setTimeout(() => setTopicPressed(false), 160);
 
     tryCardAction(handleDrawTopic);
+  }
+
+  function submitCustomTopics() {
+    if (!playerId || !isHost || isRoomFull) return;
+
+    const parsedTopics = parsePastedTopics(customTopicInput);
+
+    if (parsedTopics.length === 0) {
+      setCustomTopicError(
+        "Paste one or more valid topics, one per line. Empty lines are ignored."
+      );
+      return;
+    }
+
+    const nextTopics = dedupeTopics([...customTopics, ...parsedTopics]).slice(
+      0,
+      50
+    );
+
+    setCustomTopics(nextTopics);
+    setCustomTopicInput("");
+    setCustomTopicError("");
   }
 
   function handleCardClick(cardType) {
@@ -379,6 +419,55 @@ function Game({ roomId, name }) {
               </>
             ) : (
               <div style={styles.cooldownReady}>No active ELMO</div>
+            )}
+          </div>
+
+          <div style={styles.customTopicPanel}>
+            <div style={styles.customTopicHeader}>Custom topics</div>
+
+            {customTopics.length === 0 ? (
+              <div style={styles.customTopicText}>
+                No custom topics added yet.
+              </div>
+            ) : (
+              <div style={styles.customTopicList}>
+                {customTopics.map((topic, index) => (
+                  <div key={`${topic}-${index}`} style={styles.customTopicItem}>
+                    {topic}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isHost && (
+              <>
+                <textarea
+                  value={customTopicInput}
+                  onChange={(event) => {
+                    setCustomTopicInput(event.target.value);
+                    setCustomTopicError("");
+                  }}
+                  placeholder="Paste one topic per line"
+                  style={styles.customTopicTextarea}
+                />
+
+                {customTopicError ? (
+                  <div style={styles.customTopicError}>{customTopicError}</div>
+                ) : (
+                  <div style={styles.customTopicHint}>
+                    Keep each topic under 140 characters. Maximum 50 custom
+                    topics.
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={submitCustomTopics}
+                  style={styles.customTopicButton}
+                >
+                  Add custom topics
+                </button>
+              </>
             )}
           </div>
 

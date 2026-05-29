@@ -80,6 +80,83 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.1)",
   },
 
+  customTopicPanel: {
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+
+  customTopicHeader: {
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#eee",
+  },
+
+  customTopicTextarea: {
+    width: "100%",
+    minHeight: 120,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(0,0,0,0.3)",
+    color: "white",
+    fontSize: 14,
+    padding: 12,
+    resize: "vertical",
+    marginBottom: 10,
+  },
+
+  customTopicButton: {
+    border: 0,
+    borderRadius: 10,
+    padding: "10px 14px",
+    background: "#2980b9",
+    color: "white",
+    cursor: "pointer",
+    width: "100%",
+    fontWeight: 700,
+  },
+
+  customTopicError: {
+    color: "#e74c3c",
+    marginBottom: 10,
+    fontSize: 13,
+  },
+
+  customTopicHint: {
+    marginBottom: 10,
+    fontSize: 12,
+    color: "#bbb",
+  },
+
+  customTopicText: {
+    marginBottom: 10,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: "#ddd",
+  },
+
+  customTopicList: {
+    maxHeight: 160,
+    overflowY: "auto",
+    marginBottom: 10,
+    display: "grid",
+    gap: 6,
+  },
+
+  customTopicItem: {
+    fontSize: 13,
+    lineHeight: 1.4,
+    padding: "8px 10px",
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.05)",
+    color: "#eef",
+  },
+
   cooldownTitle: {
     fontSize: 12,
     color: "#aaa",
