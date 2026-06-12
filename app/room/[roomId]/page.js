@@ -16,7 +16,6 @@ import { useElmoTimer } from "@/lib/useelmotimer";
 import {
   shuffleTopics,
   parsePastedTopics,
-  dedupeTopics,
 } from "@/lib/topics";
 import { playCardInStorage } from "@/lib/playcard";
 
@@ -144,6 +143,12 @@ function Game({ roomId, name }) {
     storage.set("topicDeck", shuffleTopics(topics));
   }, []);
 
+  const resetCustomTopics = useMutation(({ storage }) => {
+    storage.set("customTopics", []);
+    storage.set("selectedTopic", null);
+    storage.set("topicDeck", shuffleTopics([]));
+  }, []);
+
   const cardPlays = plays.filter((play) => play.cardType);
   const historyEvents = plays;
 
@@ -256,14 +261,12 @@ function Game({ roomId, name }) {
 
     if (parsedTopics.length === 0) {
       setCustomTopicError(
-        "Paste one or more valid topics, one per line. Empty lines are ignored."
+        "Paste one or more valid topics. Use: Heading | Supporting question or just Heading."
       );
       return;
     }
 
-    const nextTopics = dedupeTopics(parsedTopics).slice(0, 50);
-
-    setCustomTopics(nextTopics);
+    setCustomTopics(parsedTopics);
     closeCustomTopicModal();
   }
 
@@ -379,6 +382,20 @@ function Game({ roomId, name }) {
                 style={styles.customTopicButton}
               >
                 Custom topics
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isHost || isRoomFull) return;
+                  resetCustomTopics();
+                }}
+                style={{
+                  ...styles.customTopicButton,
+                  background: "#666",
+                  marginTop: 8,
+                }}
+              >
+                Reset to defaults
               </button>
             </>
           )}
@@ -552,12 +569,19 @@ function Game({ roomId, name }) {
                 setCustomTopicInput(e.target.value);
                 setCustomTopicError("");
               }}
-              placeholder="Paste one topic per line"
+              placeholder={`Paste one card per line:
+Heading | Supporting question`}
               style={styles.textarea}
             />
 
             <div style={styles.customTopicHint}>
-              Each topic should be under 140 characters. Maximum 50 topics.
+              Use: <strong>Heading | Supporting question</strong> or just <strong>Heading</strong>
+            </div>
+
+            <div style={styles.customTopicText}>
+              Example:<br />
+              Better Refinement | How do we make backlog refinement less painful?<br />
+              Daily Stand-ups | What would make our stand-ups less theatre?
             </div>
 
             {customTopicError ? (
