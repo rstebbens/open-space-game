@@ -13,7 +13,10 @@ import { useRoomHost } from "@/lib/useroomhost";
 import { useRoomLimit } from "@/lib/useroomlimit";
 import { useCardCooldown } from "@/lib/usecardcooldown";
 import { useElmoTimer } from "@/lib/useelmotimer";
-import { shuffleTopics } from "@/lib/topics";
+import {
+  shuffleTopics,
+  parsePastedTopics,
+} from "@/lib/topics";
 import { playCardInStorage } from "@/lib/playcard";
 
 import Card from "@/components/card";
@@ -61,6 +64,7 @@ export default function RoomPage({ params }) {
         currentTopic: "What dependencies are blocking us?",
         selectedTopic: null,
         topicDeck: shuffleTopics(),
+        customTopics: [],
         round: 1,
         plays: [],
         hostId: null,
@@ -99,7 +103,7 @@ function Game({ roomId, name }) {
 
   const [wolfOpen, setWolfOpen] = useState(false);
   const [wolfTopic, setWolfTopic] = useState("");
-
+  const [customTopicOpen, setCustomTopicOpen] = useState(false);
   const selectedTopic = useStorage((root) => root.selectedTopic);
   const topicDeck = useStorage((root) => root.topicDeck) || [];
 
@@ -107,11 +111,14 @@ function Game({ roomId, name }) {
   const [isFlippingTopic, setIsFlippingTopic] = useState(false);
 
   const plays = useStorage((root) => root.plays) || [];
+  const customTopics = useStorage((root) => root.customTopics) || [];
   const currentTopic =
     useStorage((root) => root.currentTopic) ||
     "What dependencies are blocking us?";
   const round = useStorage((root) => root.round) || 1;
   const playerHands = useStorage((root) => root.playerHands);
+  const [customTopicInput, setCustomTopicInput] = useState("");
+  const [customTopicError, setCustomTopicError] = useState("");
 
   React.useEffect(() => {
     if (!playerId) return;
@@ -129,6 +136,18 @@ function Game({ roomId, name }) {
     playerHands !== undefined;
 
   const myHand = storageReady ? playerHands[playerId] || STARTING_HAND : [];
+
+  const setCustomTopics = useMutation(({ storage }, topics) => {
+    storage.set("customTopics", topics);
+    storage.set("selectedTopic", null);
+    storage.set("topicDeck", shuffleTopics(topics));
+  }, []);
+
+  const resetCustomTopics = useMutation(({ storage }) => {
+    storage.set("customTopics", []);
+    storage.set("selectedTopic", null);
+    storage.set("topicDeck", shuffleTopics([]));
+  }, []);
 
   const cardPlays = plays.filter((play) => play.cardType);
   const historyEvents = plays;
@@ -165,7 +184,7 @@ function Game({ roomId, name }) {
 
   const drawTopic = useMutation(({ storage }, id, playerName) => {
     const deck = storage.get("topicDeck") || [];
-    const freshDeck = deck.length > 0 ? deck : shuffleTopics();
+    const freshDeck = deck.length > 0 ? deck : shuffleTopics(storage.get("customTopics") || []);
     const nextTopic = freshDeck[0];
 
     if (!nextTopic) return;
@@ -201,7 +220,7 @@ function Game({ roomId, name }) {
     storage.set("playerHands", resetHands);
     storage.set("plays", []);
     storage.set("selectedTopic", null);
-    storage.set("topicDeck", shuffleTopics());
+    storage.set("topicDeck", shuffleTopics(storage.get("customTopics") || []));
     storage.set("elmoTimerEndsAt", null);
 
     const currentRound = storage.get("round") || 1;
@@ -227,6 +246,28 @@ function Game({ roomId, name }) {
     setTimeout(() => setTopicPressed(false), 160);
 
     tryCardAction(handleDrawTopic);
+  }
+
+  function closeCustomTopicModal() {
+    setCustomTopicOpen(false);
+    setCustomTopicInput("");
+    setCustomTopicError("");
+  }
+
+  function submitCustomTopics() {
+    if (!playerId || !isHost || isRoomFull) return;
+
+    const parsedTopics = parsePastedTopics(customTopicInput);
+
+    if (parsedTopics.length === 0) {
+      setCustomTopicError(
+        "Paste one or more valid topics. Use: Heading | Supporting question or just Heading."
+      );
+      return;
+    }
+
+    setCustomTopics(parsedTopics);
+    closeCustomTopicModal();
   }
 
   function handleCardClick(cardType) {
@@ -331,9 +372,32 @@ function Game({ roomId, name }) {
       <section style={styles.mainArea}>
         <aside style={styles.historyPanel}>
           {isHost && (
-            <div style={{ color: "gold", fontSize: 16, marginBottom: 10 }}>
-              You are host 👑
-            </div>
+            <>
+              <div style={{ color: "gold", fontSize: 16, marginBottom: 10 }}>
+                You are host 👑
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomTopicOpen(true)}
+                style={styles.customTopicButton}
+              >
+                Custom topics
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isHost || isRoomFull) return;
+                  resetCustomTopics();
+                }}
+                style={{
+                  ...styles.customTopicButton,
+                  background: "#666",
+                  marginTop: 8,
+                }}
+              >
+                Reset to defaults
+              </button>
+            </>
           )}
 
           <div style={styles.cooldownPanel}>
@@ -493,6 +557,48 @@ function Game({ roomId, name }) {
           <div style={styles.emptyHand}>No cards left this round.</div>
         )}
       </section>
+
+      {customTopicOpen && (
+        <div style={styles.modalBackdrop}>
+          <div style={styles.modal}>
+            <h2>Add custom topics</h2>
+
+            <textarea
+              value={customTopicInput}
+              onChange={(e) => {
+                setCustomTopicInput(e.target.value);
+                setCustomTopicError("");
+              }}
+              placeholder={`Paste one card per line:
+Heading | Supporting question`}
+              style={styles.textarea}
+            />
+
+            <div style={styles.customTopicHint}>
+              Use: <strong>Heading | Supporting question</strong> or just <strong>Heading</strong>
+            </div>
+
+            <div style={styles.customTopicText}>
+              Example:<br />
+              Better Refinement | How do we make backlog refinement less painful?<br />
+              Daily Stand-ups | What would make our stand-ups less theatre?
+            </div>
+
+            {customTopicError ? (
+              <div style={styles.customTopicError}>{customTopicError}</div>
+            ) : null}
+
+            <div style={styles.modalActions}>
+              <button type="button" onClick={closeCustomTopicModal}>
+                Cancel
+              </button>
+              <button type="button" onClick={submitCustomTopics}>
+                Add custom topics
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {wolfOpen && (
         <div style={styles.modalBackdrop}>

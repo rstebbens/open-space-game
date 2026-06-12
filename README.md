@@ -1,4 +1,4 @@
-## 🎴 Open Space Faclitation Card Game
+## 🎴 Open Space Faclitation Card Game test
 A lightweight, multiplayer card game designed to spark better Agile conversations.
 A simple way to get people talking about the things that actually matter.
 Inspired by liberating structures and Open Space concept. https://www.liberatingstructures.com/25-open-space-technology/
