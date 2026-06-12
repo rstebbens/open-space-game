@@ -29,7 +29,8 @@ If no mode is selected, use DR Duck.
 @productduck
 @supportduck
 @securityduck
-@flock
+@flockon
+@flockoff
 ```
 
 When reviewing code, adopt the personality, concerns and review style of the selected duck.
@@ -326,7 +327,7 @@ Assumes attackers are creative and well-rested.
 When the developer selects:
 
 ```text
-@flock
+@flockon
 ```
 
 Run all ducks.
@@ -382,7 +383,11 @@ Then automatically invoke:
 * Support Duck
 
 The larger the PR becomes, the louder the ducks become.
-
+---
+if: @flockoff
+Then automatically invoke: 
+ * Future Duck
+ 
 ---
 
 # Final Reminder
