@@ -450,6 +450,30 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
   },
 
+  estimateCard: {
+    width: 96,
+    height: 140,
+    borderRadius: 16,
+    border: "2px solid rgba(255,255,255,0.25)",
+    color: "#111",
+    background: "linear-gradient(160deg, #60a5fa, #3b82f6)",
+    boxShadow: "0 18px 45px rgba(0,0,0,0.45)",
+    cursor: "pointer",
+    transition: "transform 0.15s ease, margin 0.15s ease",
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 900,
+    fontSize: 30,
+  },
+
+  estimateCardValue: {
+    fontSize: 30,
+    fontWeight: 900,
+    color: "#111",
+  },
+
   pokerArea: {
     marginTop: 16,
     padding: "10px 16px",

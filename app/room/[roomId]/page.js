@@ -675,11 +675,11 @@ function Game({ roomId, name }) {
         )}
 
         {isEstimationMode && (
-          <div style={styles.pokerArea}>
-            <div style={styles.pokerLabel}>Planning poker vote</div>
+          <>
+            <div style={styles.handLabel}>Planning poker cards</div>
 
-            <div style={styles.pokerVoteRow}>
-              {VOTE_OPTIONS.map((option) => {
+            <div style={styles.hand}>
+              {VOTE_OPTIONS.map((option, index) => {
                 const isSelected = myVote === option;
 
                 return (
@@ -689,13 +689,13 @@ function Game({ roomId, name }) {
                     onClick={() => castVote(playerId, option)}
                     disabled={!selectedTopic || votingClosed}
                     style={{
-                      ...styles.pokerVoteButton,
-                      background: isSelected ? "#f1c40f" : "#2d2d2d",
-                      color: isSelected ? "#111" : "white",
-                      borderColor: isSelected ? "#f1c40f" : "#555",
+                      ...styles.estimateCard,
+                      transform: isSelected ? "translateY(-12px)" : "translateY(0)",
+                      opacity: !selectedTopic || votingClosed ? 0.55 : 1,
+                      marginLeft: index === 0 ? 0 : -8,
                     }}
                   >
-                    {option}
+                    <div style={styles.estimateCardValue}>{option}</div>
                   </button>
                 );
               })}
@@ -706,7 +706,7 @@ function Game({ roomId, name }) {
                 ? "Votes are locked for this round."
                 : "Pick a number card. The room sees it instantly."}
             </div>
-          </div>
+          </>
         )}
       </section>
 
