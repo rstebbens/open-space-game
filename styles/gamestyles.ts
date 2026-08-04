@@ -369,6 +369,17 @@ const styles: Record<string, CSSProperties> = {
   playerName: {
     fontSize: 12,
     color: "#ddd",
+    marginBottom: 4,
+  },
+
+  playerVoteBadge: {
+    fontSize: 11,
+    color: "#fefefe",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    borderRadius: 999,
+    padding: "4px 8px",
+    display: "inline-block",
     marginBottom: 8,
   },
 
@@ -426,6 +437,44 @@ const styles: Record<string, CSSProperties> = {
     padding: "8px 0 20px",
     minHeight: 100,
     textAlign: "center",
+  },
+
+  pokerArea: {
+    marginTop: 16,
+    padding: "10px 16px",
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    display: "inline-block",
+    minWidth: 420,
+  },
+
+  pokerLabel: {
+    fontSize: 14,
+    fontWeight: 800,
+    color: "#ddd",
+    marginBottom: 10,
+  },
+
+  pokerVoteRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  pokerVoteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    border: "1px solid #555",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  pokerHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "#bbb",
   },
 
   handLabel: {
@@ -517,6 +566,13 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: "flex-end",
     gap: 12,
     marginTop: 16,
+  },
+
+  voteMissing: {
+    marginTop: 6,
+    color: "#f5b7b1",
+    fontSize: 12,
+    lineHeight: 1.4,
   },
 
 };

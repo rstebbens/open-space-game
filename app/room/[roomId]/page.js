@@ -24,6 +24,7 @@ import PlayerSeat from "@/components/playerseat";
 import styles from "@/styles/gamestyles";
 
 const STARTING_HAND = ["ELMO", "WOLF", "REVERSE", "REDRAW"];
+const VOTE_OPTIONS = [1, 2, 3, 5, 8, 13, 21, 34, 55, "?"];
 
 const CARD_INFO = {
   ELMO: {
@@ -69,6 +70,9 @@ export default function RoomPage({ params }) {
         plays: [],
         hostId: null,
         playerHands: {},
+        roundVotes: {},
+        votingClosed: false,
+        voteRoundSummary: null,
         elmoTimerEndsAt: null,
       }}
     >
@@ -106,6 +110,9 @@ function Game({ roomId, name }) {
   const [customTopicOpen, setCustomTopicOpen] = useState(false);
   const selectedTopic = useStorage((root) => root.selectedTopic);
   const topicDeck = useStorage((root) => root.topicDeck) || [];
+  const roundVotes = useStorage((root) => root.roundVotes) || {};
+  const votingClosed = useStorage((root) => root.votingClosed) || false;
+  const voteRoundSummary = useStorage((root) => root.voteRoundSummary);
 
   const [topicPressed, setTopicPressed] = useState(false);
   const [isFlippingTopic, setIsFlippingTopic] = useState(false);
@@ -136,6 +143,7 @@ function Game({ roomId, name }) {
     playerHands !== undefined;
 
   const myHand = storageReady ? playerHands[playerId] || STARTING_HAND : [];
+  const myVote = roundVotes[playerId];
 
   const setCustomTopics = useMutation(({ storage }, topics) => {
     storage.set("customTopics", topics);
@@ -209,6 +217,39 @@ function Game({ roomId, name }) {
     ]);
   }, []);
 
+  const castVote = useMutation(({ storage }, id, value) => {
+    if (storage.get("votingClosed")) return;
+
+    const nextVotes = storage.get("roundVotes") || {};
+    storage.set("roundVotes", {
+      ...nextVotes,
+      [id]: value,
+    });
+  }, []);
+
+  const closeVotingRound = useMutation(({ storage }, missingPlayers = []) => {
+    const summary = missingPlayers.length
+      ? {
+          status: "timeout",
+          missingPlayers,
+          closedAt: Date.now(),
+        }
+      : {
+          status: "complete",
+          missingPlayers: [],
+          closedAt: Date.now(),
+        };
+
+    storage.set("votingClosed", true);
+    storage.set("voteRoundSummary", summary);
+  }, []);
+
+  const resetRoundVoting = useMutation(({ storage }) => {
+    storage.set("roundVotes", {});
+    storage.set("votingClosed", false);
+    storage.set("voteRoundSummary", null);
+  }, []);
+
   const newRound = useMutation(({ storage }) => {
     const hands = storage.get("playerHands") || {};
     const resetHands = {};
@@ -221,6 +262,9 @@ function Game({ roomId, name }) {
     storage.set("plays", []);
     storage.set("selectedTopic", null);
     storage.set("topicDeck", shuffleTopics(storage.get("customTopics") || []));
+    storage.set("roundVotes", {});
+    storage.set("votingClosed", false);
+    storage.set("voteRoundSummary", null);
     storage.set("elmoTimerEndsAt", null);
 
     const currentRound = storage.get("round") || 1;
@@ -234,6 +278,8 @@ function Game({ roomId, name }) {
 
     setTimeout(() => {
       clearElmoTimer();
+      startElmoTimer();
+      resetRoundVoting();
       drawTopic(playerId, name);
       setIsFlippingTopic(false);
     }, 450);
@@ -307,6 +353,30 @@ function Game({ roomId, name }) {
   ]
     .filter((player) => player.id)
     .slice(0, maxPlayers);
+
+  const voteCount = players.filter((player) => roundVotes[player.id] !== undefined && roundVotes[player.id] !== null).length;
+  const missingVoters = players
+    .filter((player) => roundVotes[player.id] === undefined || roundVotes[player.id] === null)
+    .map((player) => player.name);
+
+  React.useEffect(() => {
+    if (!selectedTopic || votingClosed) return;
+
+    const allVotesIn = players.length > 0 && players.every((player) => {
+      const vote = roundVotes[player.id];
+      return vote !== undefined && vote !== null;
+    });
+
+    if (allVotesIn) {
+      clearElmoTimer();
+      closeVotingRound([]);
+      return;
+    }
+
+    if (!isElmoActive) {
+      closeVotingRound(missingVoters);
+    }
+  }, [selectedTopic, votingClosed, players, roundVotes, isElmoActive, clearElmoTimer, closeVotingRound, missingVoters]);
 
   if (!storageReady) {
     return (
@@ -446,6 +516,29 @@ function Game({ roomId, name }) {
             )}
           </div>
 
+          <div style={styles.cooldownPanel}>
+            <div style={styles.cooldownTitle}>Planning Poker</div>
+            <div style={styles.cooldownText}>
+              {votingClosed
+                ? voteRoundSummary?.status === "timeout"
+                  ? "Round ended on timer"
+                  : "Everyone voted"
+                : `${voteCount}/${players.length} voted`}
+            </div>
+
+            {missingVoters.length > 0 && (
+              <div style={styles.voteMissing}>
+                Missing: {missingVoters.join(", ")}
+              </div>
+            )}
+
+            {voteRoundSummary?.missingPlayers?.length > 0 && (
+              <div style={styles.voteMissing}>
+                Timed out: {voteRoundSummary.missingPlayers.join(", ")}
+              </div>
+            )}
+          </div>
+
           <h3 style={styles.historyTitle}>Played this round</h3>
 
           {historyEvents.length === 0 && <p>No cards played yet.</p>}
@@ -454,7 +547,7 @@ function Game({ roomId, name }) {
             if (play.type === "FLIP") {
               return (
                 <div key={play.id} style={styles.historyItem}>
-                  🎴 {play.player} flipped topic: "{play.topic}"
+                  🎴 {play.player} flipped topic: &quot;{play.topic}&quot;
                 </div>
               );
             }
@@ -523,6 +616,7 @@ function Game({ roomId, name }) {
                   player={player}
                   index={index}
                   total={players.length}
+                  vote={roundVotes[player.id]}
                   plays={cardPlays.filter(
                     (play) => play.playerId === player.id
                   )}
@@ -556,6 +650,39 @@ function Game({ roomId, name }) {
         {myHand.length === 0 && (
           <div style={styles.emptyHand}>No cards left this round.</div>
         )}
+
+        <div style={styles.pokerArea}>
+          <div style={styles.pokerLabel}>Planning poker vote</div>
+
+          <div style={styles.pokerVoteRow}>
+            {VOTE_OPTIONS.map((option) => {
+              const isSelected = myVote === option;
+
+              return (
+                <button
+                  key={String(option)}
+                  type="button"
+                  onClick={() => castVote(playerId, option)}
+                  disabled={!selectedTopic || votingClosed}
+                  style={{
+                    ...styles.pokerVoteButton,
+                    background: isSelected ? "#f1c40f" : "#2d2d2d",
+                    color: isSelected ? "#111" : "white",
+                    borderColor: isSelected ? "#f1c40f" : "#555",
+                  }}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.pokerHint}>
+            {votingClosed
+              ? "Votes are locked for this round."
+              : "Pick a number card. The room sees it instantly."}
+          </div>
+        </div>
       </section>
 
       {customTopicOpen && (

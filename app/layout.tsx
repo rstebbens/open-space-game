@@ -8,14 +8,18 @@ export default function RootLayout({
 }: {
   children: ReactNode;
 }) {
+  const publicApiKey = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY;
+
   return (
     <html lang="en">
       <body>
-        <LiveblocksProvider
-          publicApiKey={process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY!}
-        >
-          {children}
-        </LiveblocksProvider>
+        {publicApiKey ? (
+          <LiveblocksProvider publicApiKey={publicApiKey}>
+            {children}
+          </LiveblocksProvider>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );

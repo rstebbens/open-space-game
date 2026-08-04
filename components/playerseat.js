@@ -1,6 +1,6 @@
 import styles from "@/styles/gamestyles";
 
-export default function PlayerSeat({ hostId,player, index, total, plays, cardInfo }) {
+export default function PlayerSeat({ hostId, player, index, total, plays, cardInfo, vote }) {
   // Work out where this player sits around the table.
   // ELI5: we place players around an invisible oval.
   const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
@@ -13,9 +13,7 @@ export default function PlayerSeat({ hostId,player, index, total, plays, cardInf
 
   // Only show the last 4 cards this player played.
   const visiblePlays = plays.slice(-4);
-{player.name === hostId && (
-  <span style={{ marginLeft: 6 }}>()</span>
-)}
+
   return (
     <div
       style={{
@@ -34,8 +32,13 @@ export default function PlayerSeat({ hostId,player, index, total, plays, cardInf
       </div>
 
       <div style={styles.playerName}>
-       {player.name}
-        {player.isYou ? " (You)"  : ""} 
+        {player.name}
+        {player.isYou ? " (You)" : ""}
+        {player.name === hostId && <span style={{ marginLeft: 6 }}>👑</span>}
+      </div>
+
+      <div style={styles.playerVoteBadge}>
+        {vote === undefined || vote === null ? "Waiting…" : `Vote: ${vote}`}
       </div>
 
       <div style={styles.playedCardContainer}>
