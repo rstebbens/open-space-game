@@ -358,6 +358,7 @@ function Game({ roomId, name }) {
   const missingVoters = players
     .filter((player) => roundVotes[player.id] === undefined || roundVotes[player.id] === null)
     .map((player) => player.name);
+  const isEstimationMode = Boolean(selectedTopic && (isElmoActive || votingClosed));
 
   React.useEffect(() => {
     if (!selectedTopic || votingClosed) return;
@@ -647,60 +648,66 @@ function Game({ roomId, name }) {
       </section>
 
       <section style={styles.handArea}>
-        <div style={styles.handLabel}>Your hand</div>
+        {!isEstimationMode && (
+          <>
+            <div style={styles.handLabel}>Your hand</div>
 
-        <div style={styles.hand}>
-          {myHand.map((cardType, index) => (
-            <Card
-              key={`${cardType}-${index}`}
-              cardType={cardType}
-              info={CARD_INFO[cardType]}
-              onClick={() =>
-                tryCardAction(() => {
-                  handleCardClick(cardType);
-                })
-              }
-              index={index}
-            />
-          ))}
-        </div>
+            <div style={styles.hand}>
+              {myHand.map((cardType, index) => (
+                <Card
+                  key={`${cardType}-${index}`}
+                  cardType={cardType}
+                  info={CARD_INFO[cardType]}
+                  onClick={() =>
+                    tryCardAction(() => {
+                      handleCardClick(cardType);
+                    })
+                  }
+                  index={index}
+                />
+              ))}
+            </div>
 
-        {myHand.length === 0 && (
-          <div style={styles.emptyHand}>No cards left this round.</div>
+            {myHand.length === 0 && (
+              <div style={styles.emptyHand}>No cards left this round.</div>
+            )}
+          </>
         )}
 
-        <div style={styles.pokerArea}>
-          <div style={styles.pokerLabel}>Planning poker vote</div>
+        {isEstimationMode && (
+          <div style={styles.pokerArea}>
+            <div style={styles.pokerLabel}>Planning poker vote</div>
 
-          <div style={styles.pokerVoteRow}>
-            {VOTE_OPTIONS.map((option) => {
-              const isSelected = myVote === option;
+            <div style={styles.pokerVoteRow}>
+              {VOTE_OPTIONS.map((option) => {
+                const isSelected = myVote === option;
 
-              return (
-                <button
-                  key={String(option)}
-                  type="button"
-                  onClick={() => castVote(playerId, option)}
-                  disabled={!selectedTopic || votingClosed}
-                  style={{
-                    ...styles.pokerVoteButton,
-                    background: isSelected ? "#f1c40f" : "#2d2d2d",
-                    color: isSelected ? "#111" : "white",
-                    borderColor: isSelected ? "#f1c40f" : "#555",
-                  }}
-                >
-                  {option}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={String(option)}
+                    type="button"
+                    onClick={() => castVote(playerId, option)}
+                    disabled={!selectedTopic || votingClosed}
+                    style={{
+                      ...styles.pokerVoteButton,
+                      background: isSelected ? "#f1c40f" : "#2d2d2d",
+                      color: isSelected ? "#111" : "white",
+                      borderColor: isSelected ? "#f1c40f" : "#555",
+                    }}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={styles.pokerHint}>
+              {votingClosed
+                ? "Votes are locked for this round."
+                : "Pick a number card. The room sees it instantly."}
+            </div>
           </div>
-
-          <div style={styles.pokerHint}>
-            {votingClosed
-              ? "Votes are locked for this round."
-              : "Pick a number card. The room sees it instantly."}
-          </div>
-        </div>
+        )}
       </section>
 
       {customTopicOpen && (
