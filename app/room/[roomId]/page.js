@@ -537,6 +537,27 @@ function Game({ roomId, name }) {
                 Timed out: {voteRoundSummary.missingPlayers.join(", ")}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!isHost || isRoomFull || !selectedTopic) return;
+
+                resetRoundVoting();
+                startElmoTimer();
+              }}
+              disabled={!isHost || isRoomFull || !selectedTopic}
+              style={{
+                ...styles.estimateButton,
+                opacity: !isHost || isRoomFull || !selectedTopic ? 0.45 : 1,
+                cursor:
+                  !isHost || isRoomFull || !selectedTopic
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              Estimate
+            </button>
           </div>
 
           <h3 style={styles.historyTitle}>Played this round</h3>

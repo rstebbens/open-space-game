@@ -178,6 +178,17 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
   },
 
+  estimateButton: {
+    marginTop: 12,
+    border: 0,
+    borderRadius: 10,
+    padding: "10px 14px",
+    background: "#4aa3ff",
+    color: "white",
+    fontWeight: 800,
+    width: "100%",
+  },
+
   cooldownTrack: {
     width: "100%",
     height: 8,
