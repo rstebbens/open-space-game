@@ -541,19 +541,16 @@ function Game({ roomId, name }) {
             <button
               type="button"
               onClick={() => {
-                if (!isHost || isRoomFull || !selectedTopic) return;
+                if (!isHost || isRoomFull) return;
 
                 resetRoundVoting();
                 startElmoTimer();
               }}
-              disabled={!isHost || isRoomFull || !selectedTopic}
+              disabled={!isHost || isRoomFull}
               style={{
                 ...styles.estimateButton,
-                opacity: !isHost || isRoomFull || !selectedTopic ? 0.45 : 1,
-                cursor:
-                  !isHost || isRoomFull || !selectedTopic
-                    ? "not-allowed"
-                    : "pointer",
+                opacity: !isHost || isRoomFull ? 0.45 : 1,
+                cursor: !isHost || isRoomFull ? "not-allowed" : "pointer",
               }}
             >
               Estimate
