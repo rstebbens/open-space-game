@@ -1,6 +1,15 @@
 import styles from "@/styles/gamestyles";
 
-export default function PlayerSeat({ hostId, player, index, total, plays, cardInfo, vote }) {
+export default function PlayerSeat({
+  hostId,
+  player,
+  index,
+  total,
+  plays,
+  cardInfo,
+  vote,
+  votingClosed,
+}) {
   // Work out where this player sits around the table.
   // ELI5: we place players around an invisible oval.
   const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
@@ -13,6 +22,7 @@ export default function PlayerSeat({ hostId, player, index, total, plays, cardIn
 
   // Only show the last 4 cards this player played.
   const visiblePlays = plays.slice(-4);
+  const hasVoted = vote !== undefined && vote !== null;
 
   return (
     <div
@@ -38,10 +48,21 @@ export default function PlayerSeat({ hostId, player, index, total, plays, cardIn
       </div>
 
       <div style={styles.playerVoteBadge}>
-        {vote === undefined || vote === null ? "Waiting…" : `Vote: ${vote}`}
+        {!hasVoted && !votingClosed && "Waiting…"}
+        {hasVoted && !votingClosed && "Voted"}
+        {votingClosed && !hasVoted && "No vote"}
+        {votingClosed && hasVoted && `Vote: ${vote}`}
       </div>
 
       <div style={styles.playedCardContainer}>
+        {hasVoted && (
+          <VoteCard
+            vote={vote}
+            votingClosed={votingClosed}
+            cardIndex={visiblePlays.length}
+          />
+        )}
+
         {visiblePlays.map((play, cardIndex) => (
           <PlayedCard
             key={play.id}
@@ -50,6 +71,33 @@ export default function PlayerSeat({ hostId, player, index, total, plays, cardIn
             cardIndex={cardIndex}
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function VoteCard({ vote, votingClosed, cardIndex }) {
+  const rotation = (cardIndex - 1.5) * 4;
+
+  return (
+    <div
+      style={{
+        ...styles.playedCard,
+        background: votingClosed ? "linear-gradient(160deg, #60a5fa, #3b82f6)" : "linear-gradient(160deg, #34495e, #22313f)",
+        transform: `rotate(${rotation}deg)`,
+        color: votingClosed ? "#111" : "white",
+      }}
+    >
+      <div style={styles.playedCardType}>
+        {votingClosed ? "Vote" : "?"}
+      </div>
+
+      <div style={styles.playedCardTitle}>
+        {votingClosed ? vote : ""}
+      </div>
+
+      <div style={styles.playedCardSubtitle}>
+        {votingClosed ? "Revealed" : "Hidden"}
       </div>
     </div>
   );

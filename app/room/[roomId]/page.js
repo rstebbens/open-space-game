@@ -24,7 +24,7 @@ import PlayerSeat from "@/components/playerseat";
 import styles from "@/styles/gamestyles";
 
 const STARTING_HAND = ["ELMO", "WOLF", "REVERSE", "REDRAW"];
-const VOTE_OPTIONS = [1, 2, 3, 5, 8, 13, 21, 34, 55, "?"];
+const VOTE_OPTIONS = [1, 2, 3, 5, 8, 13, "?"];
 
 const CARD_INFO = {
   ELMO: {
@@ -228,6 +228,8 @@ function Game({ roomId, name }) {
   }, []);
 
   const closeVotingRound = useMutation(({ storage }, missingPlayers = []) => {
+    if (storage.get("votingClosed")) return;
+
     const summary = missingPlayers.length
       ? {
           status: "timeout",
@@ -375,6 +377,7 @@ function Game({ roomId, name }) {
     }
 
     if (!isElmoActive) {
+      clearElmoTimer();
       closeVotingRound(missingVoters);
     }
   }, [selectedTopic, votingClosed, players, roundVotes, isElmoActive, clearElmoTimer, closeVotingRound, missingVoters]);
@@ -636,6 +639,7 @@ function Game({ roomId, name }) {
                   index={index}
                   total={players.length}
                   vote={roundVotes[player.id]}
+                  votingClosed={votingClosed}
                   plays={cardPlays.filter(
                     (play) => play.playerId === player.id
                   )}
