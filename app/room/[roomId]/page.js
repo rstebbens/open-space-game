@@ -73,6 +73,7 @@ export default function RoomPage({ params }) {
         roundVotes: {},
         votingClosed: false,
         voteRoundSummary: null,
+        estimationActive: false,
         elmoTimerEndsAt: null,
       }}
     >
@@ -113,6 +114,7 @@ function Game({ roomId, name }) {
   const roundVotes = useStorage((root) => root.roundVotes) || {};
   const votingClosed = useStorage((root) => root.votingClosed) || false;
   const voteRoundSummary = useStorage((root) => root.voteRoundSummary);
+  const estimationActive = useStorage((root) => root.estimationActive) || false;
 
   const [topicPressed, setTopicPressed] = useState(false);
   const [isFlippingTopic, setIsFlippingTopic] = useState(false);
@@ -218,7 +220,7 @@ function Game({ roomId, name }) {
   }, []);
 
   const castVote = useMutation(({ storage }, id, value) => {
-    if (storage.get("votingClosed")) return;
+    if (!storage.get("estimationActive") || storage.get("votingClosed")) return;
 
     const nextVotes = storage.get("roundVotes") || {};
     storage.set("roundVotes", {
@@ -250,6 +252,14 @@ function Game({ roomId, name }) {
     storage.set("roundVotes", {});
     storage.set("votingClosed", false);
     storage.set("voteRoundSummary", null);
+    storage.set("estimationActive", true);
+  }, []);
+
+  const startEstimation = useMutation(({ storage }) => {
+    storage.set("roundVotes", {});
+    storage.set("votingClosed", false);
+    storage.set("voteRoundSummary", null);
+    storage.set("estimationActive", true);
   }, []);
 
   const newRound = useMutation(({ storage }) => {
@@ -267,6 +277,7 @@ function Game({ roomId, name }) {
     storage.set("roundVotes", {});
     storage.set("votingClosed", false);
     storage.set("voteRoundSummary", null);
+    storage.set("estimationActive", false);
     storage.set("elmoTimerEndsAt", null);
 
     const currentRound = storage.get("round") || 1;
@@ -360,10 +371,10 @@ function Game({ roomId, name }) {
   const missingVoters = players
     .filter((player) => roundVotes[player.id] === undefined || roundVotes[player.id] === null)
     .map((player) => player.name);
-  const isEstimationMode = Boolean(selectedTopic && (isElmoActive || votingClosed));
+  const isEstimationMode = estimationActive;
 
   React.useEffect(() => {
-    if (!selectedTopic || votingClosed) return;
+    if (!estimationActive || votingClosed) return;
 
     const allVotesIn = players.length > 0 && players.every((player) => {
       const vote = roundVotes[player.id];
@@ -380,7 +391,7 @@ function Game({ roomId, name }) {
       clearElmoTimer();
       closeVotingRound(missingVoters);
     }
-  }, [selectedTopic, votingClosed, players, roundVotes, isElmoActive, clearElmoTimer, closeVotingRound, missingVoters]);
+  }, [estimationActive, votingClosed, players, roundVotes, isElmoActive, clearElmoTimer, closeVotingRound, missingVoters]);
 
   if (!storageReady) {
     return (
@@ -547,7 +558,8 @@ function Game({ roomId, name }) {
               onClick={() => {
                 if (!isHost || isRoomFull) return;
 
-                resetRoundVoting();
+                clearElmoTimer();
+                startEstimation();
                 startElmoTimer();
               }}
               disabled={!isHost || isRoomFull}
@@ -557,7 +569,7 @@ function Game({ roomId, name }) {
                 cursor: !isHost || isRoomFull ? "not-allowed" : "pointer",
               }}
             >
-              Estimate
+              {estimationActive && !votingClosed ? "Estimating…" : "Start another estimate"}
             </button>
           </div>
 
@@ -691,11 +703,11 @@ function Game({ roomId, name }) {
                     key={String(option)}
                     type="button"
                     onClick={() => castVote(playerId, option)}
-                    disabled={!selectedTopic || votingClosed}
+                    disabled={!estimationActive || votingClosed}
                     style={{
                       ...styles.estimateCard,
                       transform: isSelected ? "translateY(-12px)" : "translateY(0)",
-                      opacity: !selectedTopic || votingClosed ? 0.55 : 1,
+                      opacity: !estimationActive || votingClosed ? 0.55 : 1,
                       marginLeft: index === 0 ? 0 : -8,
                     }}
                   >
